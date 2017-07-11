@@ -107,11 +107,9 @@ public class CenterServer extends DCMSPOA{
 			NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
 
 			// bind the Object Reference in Naming
-			String name = PublicParamters.Location.MTL.toString();
+			String name = location.toString();
 			NameComponent path[] = ncRef.to_name(name);
 			ncRef.rebind(path, href);
-
-			System.out.println("Clinic Montreal Server Ready And Waiting ...");
 
 			// wait for invocations from clients
 			orb.run();
@@ -119,7 +117,7 @@ public class CenterServer extends DCMSPOA{
 			System.err.println("ERROR: " + e);
 	        e.printStackTrace(System.out);
 		}
-		System.out.println("Clinic Server" +location.toString()+" Exiting ...");
+		System.out.println("Center Server " +location.toString()+" up running ...");
 	}
 	
 
@@ -404,32 +402,45 @@ public class CenterServer extends DCMSPOA{
 
 	@Override
 	public String transferRecord(String managerId, String recordID, String remoteClinicServerName) {
-		if(!checkRecordIDExistOrNot(recordID)){
-			return "RecordID is not right. Please input again.\n";
+
+		Iterator it = recordData.entrySet().iterator();
+		while(it.hasNext()){
+			   Entry entry = (Entry) it.next();
+			   LinkedList<Record> recordList = (LinkedList<Record>) entry.getValue();
+			   
+			   synchronized(recordList){
+				   Iterator listIt = recordList.iterator();
+				   
+				   while(listIt.hasNext()){
+					   Record record = (Record) listIt.next();
+					   if(record.getRecordID().equalsIgnoreCase(recordID) &&
+							   (remoteClinicServerName.equalsIgnoreCase(Location.MTL.toString()) ||
+							    remoteClinicServerName.equalsIgnoreCase(Location.LVL.toString()) ||
+							    remoteClinicServerName.equalsIgnoreCase(Location.DDO.toString()))){
+						   if(remoteClinicServerName.equalsIgnoreCase(this.location.toString())){
+								String output = "Manager: "+ managerId + " change " + recordID +" locaiton to "+ remoteClinicServerName;
+								for(CenterServer server : ServerRunner.serverList){
+									if(server.getLocation() == Location.valueOf(remoteClinicServerName)){
+							  		requestCreateRecord(server, record);
+							  		listIt.remove();
+							  		recordCount --;
+									}
+								}
+								return output;
+						   }
+						   else{
+							   return "cannot transfer record to itself server";
+						   }
+					   }
+					   else{
+						   return "location is not correct";
+					   }
+				   }
+					   
+			   }
 		}
-		if(!remoteClinicServerName.equalsIgnoreCase("mtl")){
-			if(!checkLocation(remoteClinicServerName)){
-				return "Location is not right. Please input (mtl,lvl or ddo).\n";
-			}
-		}else{
-			return "Location is not right. You can not transfer record to sever itself.";
-		}
-		String result = transferRecordToOtherServer(recordID, remoteClinicServerName);
-		this.writeToLog("Manager: "+ managerId + " transfer recordID: "+ recordID + " to " + remoteClinicServerName + "success");
-		return result;
-		
-		
-		   newValue = newValue.toUpperCase(); // location are all upper case
-		   ((TeacherRecord)record).setLocation(newValue);
-	  		String output = recordID+"'s location is changed to "+((TeacherRecord)record).getLocation().toString();
-			for(CenterServer server : ServerRunner.serverList){
-				if(server.getLocation() == Location.valueOf(newValue)){
-     	  		requestCreateRecord(server, record);
-     	  		listIt.remove();
-     	  		recordCount --;
-				}
-			}
-	  		return output;
+		return "error while processing record transfer";
+
 	}
 	
 	/**

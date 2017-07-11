@@ -55,61 +55,13 @@ public class ManagerClient {
 		managerIDbase++;
 		DCMS_IMPL = getServerReferrence(args, managerID);
 	}
-	
-//	/**
-//	 * This function is for check the prefix of managerID and send this managerID to specific server to check valid or not.
-//	 * @param n_managerID
-//	 * @return
-//	 */
-//	public static Boolean checkServerInfo(String n_managerID){
-//		DatagramSocket socket = null;
-//		String hostname = Config_Client.HOST;
-//		String requestcode = "001";
-//		int serverPort = 0;
-//		
-//		if(Config_Client.MANAGER_ID.substring(0, 3).equalsIgnoreCase("mtl")){
-//			serverPort = Config_Client.SERVER_PORT_MTL;
-//		}else if(Config_Client.MANAGER_ID.substring(0, 3).equalsIgnoreCase("lvl")){
-//			serverPort = Config_Client.SERVER_PORT_LVL;
-//		}else if(Config_Client.MANAGER_ID.substring(0, 3).equalsIgnoreCase("ddo")){
-//			serverPort = Config_Client.SERVER_PORT_DDO;
-//		}
-//		
-//	    try {
-//	    	socket = new DatagramSocket();
-//	    	byte[] message = (new String(requestcode+"\n"+n_managerID)).getBytes();
-//	    	InetAddress host = InetAddress.getByName(hostname);
-//	    	DatagramPacket request = new DatagramPacket(message, message.length, host, serverPort);
-//	    	socket.send(request);
-//	    	byte[] buffer = new byte[100];
-//	    	DatagramPacket reply = new DatagramPacket(buffer, buffer.length); 
-//	    	socket.receive(reply);
-//	    	String result = new String(reply.getData()).trim();
-//	    	if(result.equals("valid")){
-//	    		System.out.println("Valid Account");
-//	    		return true;
-//	    	}else{
-//	    		System.out.println("Invalid Account");
-//	    		return false;
-//	    	}
-//	    }
-//	    catch(Exception e){
-//	    	System.out.println("Socket: " + e.getMessage()); 
-//	    	}
-//		finally{
-//			if(socket != null){
-//				socket.close();
-//				}
-//			}
-//		return null; 
-//	}
-	
+
 	/**
 	 * This is a local function for check manager format use Regular expression.
 	 * @param n_managerID
 	 * @return
 	 */
-	public static Boolean checkManagerIDFormat(String n_managerID){
+	private static Boolean checkManagerIDFormat(String n_managerID){
 		String pattern = "^(MTL|LVL|DDO)(\\d{5})$";
 		Pattern re = Pattern.compile(pattern,Pattern.CASE_INSENSITIVE);
 		Matcher matcher = re.matcher(n_managerID);
@@ -182,7 +134,6 @@ public class ManagerClient {
 	public void changeLocation(Location l) throws RemoteException{
 		String tmp = managerID.substring(3);
 		managerID = l.toString() + tmp;
-		registry = LocateRegistry.getRegistry(l.getPort());
 	}
 	
 	/**
