@@ -40,6 +40,8 @@ public interface PublicParamters {
 	final int SERVER_PORT_MTL = 7000;
 	final int SERVER_PORT_LVL = 7001;
 	final int SERVER_PORT_DDO = 7002;
+	final String ORB_INITIAL_PORT = "1050";
+	
 	public DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
 }

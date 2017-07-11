@@ -3,6 +3,7 @@ package Client;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.DatagramSocket;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -12,9 +13,19 @@ import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Properties;
 import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.omg.CORBA.ORB;
+import org.omg.CosNaming.NamingContextExt;
+import org.omg.CosNaming.NamingContextExtHelper;
+
+import Config.PublicParamters;
 import Config.PublicParamters.*;
+import DCMS_CORBA.DCMS;
+import DCMS_CORBA.DCMSHelper;
 
 
 /**
@@ -30,10 +41,9 @@ public class ManagerClient {
 	protected static int managerIDbase =1000; // static to mark unique manager ID
 	private String managerID;	
 	private File log = null;
-	private Registry registry; // each manger only have 1 registry, cannot linked to 2 servers
-	private DCMSInterface intrfc;
-	
-	public ManagerClient(Location l) throws IOException, NotBoundException{
+	private DCMS DCMS_IMPL = null;
+
+	public ManagerClient(String args[], Location l) throws IOException, NotBoundException{
 		managerID = l.toString() + managerIDbase;
 		log = new File(managerID+".txt");
 		if(! log.exists())
@@ -42,9 +52,110 @@ public class ManagerClient {
 			if(log.delete())
 				log.createNewFile();
 		}
-		registry = LocateRegistry.getRegistry(l.getPort());
 		managerIDbase++;
+		DCMS_IMPL = getServerReferrence(args, managerID);
 	}
+	
+//	/**
+//	 * This function is for check the prefix of managerID and send this managerID to specific server to check valid or not.
+//	 * @param n_managerID
+//	 * @return
+//	 */
+//	public static Boolean checkServerInfo(String n_managerID){
+//		DatagramSocket socket = null;
+//		String hostname = Config_Client.HOST;
+//		String requestcode = "001";
+//		int serverPort = 0;
+//		
+//		if(Config_Client.MANAGER_ID.substring(0, 3).equalsIgnoreCase("mtl")){
+//			serverPort = Config_Client.SERVER_PORT_MTL;
+//		}else if(Config_Client.MANAGER_ID.substring(0, 3).equalsIgnoreCase("lvl")){
+//			serverPort = Config_Client.SERVER_PORT_LVL;
+//		}else if(Config_Client.MANAGER_ID.substring(0, 3).equalsIgnoreCase("ddo")){
+//			serverPort = Config_Client.SERVER_PORT_DDO;
+//		}
+//		
+//	    try {
+//	    	socket = new DatagramSocket();
+//	    	byte[] message = (new String(requestcode+"\n"+n_managerID)).getBytes();
+//	    	InetAddress host = InetAddress.getByName(hostname);
+//	    	DatagramPacket request = new DatagramPacket(message, message.length, host, serverPort);
+//	    	socket.send(request);
+//	    	byte[] buffer = new byte[100];
+//	    	DatagramPacket reply = new DatagramPacket(buffer, buffer.length); 
+//	    	socket.receive(reply);
+//	    	String result = new String(reply.getData()).trim();
+//	    	if(result.equals("valid")){
+//	    		System.out.println("Valid Account");
+//	    		return true;
+//	    	}else{
+//	    		System.out.println("Invalid Account");
+//	    		return false;
+//	    	}
+//	    }
+//	    catch(Exception e){
+//	    	System.out.println("Socket: " + e.getMessage()); 
+//	    	}
+//		finally{
+//			if(socket != null){
+//				socket.close();
+//				}
+//			}
+//		return null; 
+//	}
+	
+	/**
+	 * This is a local function for check manager format use Regular expression.
+	 * @param n_managerID
+	 * @return
+	 */
+	public static Boolean checkManagerIDFormat(String n_managerID){
+		String pattern = "^(MTL|LVL|DDO)(\\d{5})$";
+		Pattern re = Pattern.compile(pattern,Pattern.CASE_INSENSITIVE);
+		Matcher matcher = re.matcher(n_managerID);
+		if(matcher.find()){
+			return true;
+		}else{
+			System.err.println("Usage:[MTL,LVL,DDO]+[10000]\n");
+			return false;
+		}
+	}
+	
+	/**
+	 * If managerID is valid, this function is for get the stub of that server.
+	 * @param managerID
+	 * @return
+	 * @throws Exception
+	 */
+	public static DCMS getServerReferrence(String[] args, String managerID){
+		try {
+			//initial the port number of 1050;
+			Properties props = new Properties();
+	        props.put("org.omg.CORBA.ORBInitialPort", PublicParamters.ORB_INITIAL_PORT);
+	        
+			// create and initialize the ORB
+			ORB orb = ORB.init(args, props);
+
+			// get the root naming context
+			org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+			
+			// Use NamingContextExt instead of NamingContext. This is 
+			// part of the Interoperable naming Service.  
+			NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+			
+			if(managerID.substring(0, 3).equalsIgnoreCase("mtl")){
+				return DCMSHelper.narrow(ncRef.resolve_str("server_mtl"));
+			}else if(managerID.substring(0, 3).equalsIgnoreCase("lvl")){
+				return DCMSHelper.narrow(ncRef.resolve_str("server_lvl"));
+			}else if(managerID.substring(0, 3).equalsIgnoreCase("ddo")){
+				return DCMSHelper.narrow(ncRef.resolve_str("server_ddo"));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}	
+		return null;
+	}
+	
 	
 	public String getManagerID(){
 		return managerID;
@@ -75,7 +186,7 @@ public class ManagerClient {
 	}
 	
 	/**
-	 * manager side call Server createTRecord through interface
+	 * manager side call Server createTRecord through orb obj
 	 * @param firstName
 	 * @param lastName
 	 * @param address
@@ -88,15 +199,14 @@ public class ManagerClient {
 	 */
 	public void createTRecord(String firstName, String lastName, String address, 
 			  					String phone, Specialization special, Location loc) throws RemoteException, IOException, NotBoundException{
-		intrfc = (DCMSInterface)registry.lookup(managerID.substring(0, 3)); //dynamic bindling clinet to server.
-		String reply = intrfc.createTRecord(firstName, lastName, address, phone, special, loc);
-		System.out.println(reply);
-		writeToLog(reply);
+		String result = DCMS_IMPL.createTRecord(this.managerID, firstName, lastName, address, phone, special.toString(), loc.toString());
+		System.out.println(result);
+		writeToLog(result);
 		
 	}
 	
 	/**
-	 * manager side call Server createSRecord through interface
+	 * manager side call Server createSRecord through orb obj
 	 * @param firstName
 	 * @param lastName
 	 * @param course
@@ -108,8 +218,7 @@ public class ManagerClient {
 	 */
 	public void createSRecord(String firstName, String lastName, Course course, 
 								Status status, String statusdate) throws IOException, RemoteException, NotBoundException{
-		intrfc = (DCMSInterface)registry.lookup(managerID.substring(0, 3));
-		String reply = intrfc.createSRecord(firstName, lastName, course, status, statusdate);
+		String reply = DCMS_IMPL.createSRecord(this.managerID, firstName, lastName, course.toString(), status.toString(), statusdate);
 		System.out.println(reply);
 		writeToLog(reply);
 	}
@@ -121,14 +230,13 @@ public class ManagerClient {
 	 * @throws NotBoundException
 	 */
 	public void getRecordCounts() throws IOException, RemoteException, NotBoundException{
-		intrfc = (DCMSInterface)registry.lookup(managerID.substring(0, 3)); //dynamic bindling clinet to server.
-		String reply = intrfc.getRecordCounts();
+		String reply = DCMS_IMPL.getRecordCounts(this.managerID);
 		System.out.println(reply);
 		writeToLog(reply);
 	}
 	
 	/**
-	 * manager side call Server EditRecord through interface
+	 * manager side call Server EditRecord through orb obj
 	 * @param recordID
 	 * @param fieldName
 	 * @param newValue
@@ -137,10 +245,24 @@ public class ManagerClient {
 	 * @throws NotBoundException
 	 */
 	public void EditRecord(String recordID, String fieldName, String newValue) throws IOException, RemoteException, NotBoundException{
-		intrfc = (DCMSInterface)registry.lookup(managerID.substring(0, 3)); //dynamic bindling clinet to server.
-		String reply = intrfc.EditRecord(recordID, fieldName, newValue);
+		String reply = DCMS_IMPL.editRecord(this.managerID,recordID, fieldName, newValue);
 		System.out.println(reply);
 		writeToLog(reply);
 	}
 
+	/**
+	 * manager side call Server Transfer record through orb obj
+	 * @param recordID
+	 * @param fieldName
+	 * @param newValue
+	 * @throws IOException
+	 * @throws RemoteException
+	 * @throws NotBoundException
+	 */
+	public void transferRecord(String recordID, String remoteCenterServerName) throws IOException, RemoteException, NotBoundException{
+		String reply = DCMS_IMPL.transferRecord(this.managerID, recordID, remoteCenterServerName);
+		System.out.println(reply);
+		writeToLog(reply);
+	}
+	
 }

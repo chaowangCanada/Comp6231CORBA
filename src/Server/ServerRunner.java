@@ -6,15 +6,15 @@ import Config.PublicParamters.*;
 
 public class ServerRunner {
 
-	public static ArrayList<ClinicServer> serverList = new ArrayList<ClinicServer>();
+	public static ArrayList<CenterServer> serverList = new ArrayList<CenterServer>();
 	
 	
 	public static void main(String args[]){
 		try{
 			
-			ClinicServer mtl = new ClinicServer(Location.MTL);
-			ClinicServer lvl = new ClinicServer(Location.LVL);
-			ClinicServer ddo = new ClinicServer(Location.DDO); 
+			CenterServer mtl = new CenterServer(Location.MTL);
+			CenterServer lvl = new CenterServer(Location.LVL);
+			CenterServer ddo = new CenterServer(Location.DDO); 
 			
 			serverList.add(mtl);
 			serverList.add(lvl);
@@ -25,10 +25,10 @@ public class ServerRunner {
 			lvl.openUDPListener();
 			ddo.openUDPListener();
 			
-			// create registry, RMI binding
-			mtl.exportServer();
-			lvl.exportServer();
-			ddo.exportServer();
+			// create registry, Corba binding
+			mtl.exportServer(args);
+			lvl.exportServer(args);
+			ddo.exportServer(args);
 
 			System.out.println("Servers are up and running ");
 

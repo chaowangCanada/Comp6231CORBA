@@ -20,28 +20,39 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import Config.*;
 import Config.PublicParamters.*;
 import Record.*;
+import org.omg.CORBA.ORB;
+import org.omg.CosNaming.NameComponent;
+import org.omg.CosNaming.NamingContextExt;
+import org.omg.CosNaming.NamingContextExtHelper;
+import org.omg.PortableServer.POA;
+import org.omg.PortableServer.POAHelper;
+import DCMS_CORBA.*;
+
 /**
- * Server class, using RMI, and UDP, for server-server communication
+ * Server class, using CORBA, and UDP, for server-server communication
  * @author Chao
  *
  */
 
-public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{	
+public class CenterServer extends DCMSPOA{	
 	
 	private File logFile = null;
 	private HashMap<Character, LinkedList<Record>> recordData;  // store Student Record and Teacher Record. Servers doen't share record
 	private Location location;
 	private int recordCount = 0; 
+	private ORB orb;
 	
-	public ClinicServer(Location loc)throws IOException{
+	public CenterServer(Location loc)throws IOException{
 		super();
 		location = loc;
 		logFile = new File(location+"_log.txt");
@@ -55,12 +66,60 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	}
 	
 	/**
-	 *  create registry, RMI binding with registry
+	 * Set ORB function
+	 * @param orb_val
+	 */
+	public void setORB(ORB orb_val) {
+	    this.orb = orb_val;
+	}
+	
+	/**
+	 *  create registry, corba binding with registry
 	 * @throws Exception
 	 */
-	public void exportServer() throws Exception {
-		Registry registry= LocateRegistry.createRegistry(location.getPort());
-		registry.bind(location.toString(), this);
+	public void exportServer(String[] args) throws Exception {
+
+		try {
+			//initial the port number of 1050;
+			Properties props = new Properties();
+	        props.put("org.omg.CORBA.ORBInitialPort", PublicParamters.ORB_INITIAL_PORT);
+	        
+			// create and initialize the ORB
+			ORB orb = ORB.init(args, props);
+
+			// get reference to rootpoa & activate the POAManager
+			POA rootpoa = POAHelper.narrow(orb.resolve_initial_references("RootPOA"));
+			rootpoa.the_POAManager().activate();
+
+			// create servant and register it with the ORB
+			this.setORB(orb); 
+
+			// get object reference from the servant
+			org.omg.CORBA.Object ref = rootpoa.servant_to_reference(this);
+			DCMS href = DCMSHelper.narrow(ref);
+			    
+			// get the root naming context
+			// NameService invokes the name service
+			org.omg.CORBA.Object objRef = orb.resolve_initial_references("NameService");
+			
+			// Use NamingContextExt which is part of the Interoperable
+			// Naming Service (INS) specification.
+			NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
+
+			// bind the Object Reference in Naming
+			String name = PublicParamters.Location.MTL.toString();
+			NameComponent path[] = ncRef.to_name(name);
+			ncRef.rebind(path, href);
+
+			System.out.println("Clinic Montreal Server Ready And Waiting ...");
+
+			// wait for invocations from clients
+			orb.run();
+		} catch (Exception e) {
+			System.err.println("ERROR: " + e);
+	        e.printStackTrace(System.out);
+		}
+		System.out.println("Clinic Server" +location.toString()+" Exiting ...");
 	}
 	
 
@@ -76,11 +135,11 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	// thread for while(true) loop, waiting for reply
 	private class UDPListenerThread extends Thread{
 
-		private ClinicServer server = null;
+		private CenterServer server = null;
 		
 		private String recordCount ;
 		
-		public UDPListenerThread(ClinicServer threadServer) {
+		public UDPListenerThread(CenterServer threadServer) {
 			server = threadServer;
 		}
 		
@@ -107,7 +166,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 						else if (requestStr.substring(0, 13).equalsIgnoreCase("TeacherRecord")){
 							server.writeToLog("Receive UDP message for creating : "+ requestStr.substring(0, 13));
 							String[] info = requestStr.split("&");
-							server.createTRecord(info[1], info[2], info[3], info[4], Specialization.valueOf(info[5]), Location.valueOf(info[6]));
+							server.createTRecord("0", info[1], info[2], info[3], info[4], info[5], info[6]);
 							String replyStr = "Successfully create Teatcher Record";
 							DatagramPacket reply = new DatagramPacket(replyStr.getBytes(),replyStr.getBytes().length, request.getAddress(), request.getPort()); 
 							aSocket.send(reply);
@@ -115,7 +174,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 						else if (requestStr.substring(0, 13).equalsIgnoreCase("StudentRecord")){
 							server.writeToLog("Receive UDP message for creating : "+ requestStr.substring(0, 13));
 							String[] info = requestStr.split("&");
-							server.createSRecord(info[1], info[2], Course.valueOf(info[3]), Status.valueOf(info[4]), info[5]);
+							server.createSRecord("0", info[1], info[2], info[3], info[4], info[5]);
 							String replyStr = "Successfully create Student Record";
 							DatagramPacket reply = new DatagramPacket(replyStr.getBytes(),replyStr.getBytes().length, request.getAddress(), request.getPort()); 
 							aSocket.send(reply);
@@ -132,11 +191,11 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	 * (non-Javadoc)
 	 * @see Assignment1.DCMSInterface#createTRecord(java.lang.String, java.lang.String, java.lang.String, java.lang.String, Assignment1.PublicParamters.Specialization, Assignment1.PublicParamters.Location)
 	 */
-	public String createTRecord(String firstName, String lastName, String address, 
-							  String phone, Specialization special, Location loc) throws IOException, RemoteException{
-		if(loc == this.getLocation()){
-			this.writeToLog(location.toString() + " creates Teacher record.");
-			Record tchrRecord = new TeacherRecord(firstName, lastName, address, phone, special, loc);
+	public String createTRecord(String managerId, String firstName, String lastName, String address, 
+							  String phone, String specialization, String location) throws IOException {
+		if(location == this.getLocation().toString()){
+			this.writeToLog("Manager: "+ managerId + " "+location + " creates Teacher record.");
+			Record tchrRecord = new TeacherRecord(firstName, lastName, address, phone, Specialization.valueOf(specialization), Location.valueOf(location));
 			if(recordData.get(lastName.charAt(0)) == null){
 				recordData.put(lastName.charAt(0), new LinkedList<Record>());
 			}
@@ -149,19 +208,19 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 				}
 			}
 		}
-		this.writeToLog("failed to write Teacher Record");
+			this.writeToLog("failed to write Teacher Record");
 		System.out.println("failed to write Teacher Record");
 		return "failed to write Teacher Record";
 	}
 	
 	/*
 	 * 
-	 * @see Assignment1.DCMSInterface#createSRecord(java.lang.String, java.lang.String, Assignment1.PublicParamters.Course, Assignment1.PublicParamters.Status, java.lang.String)
+	 * @see Assignment2.DCMSInterface#createSRecord(java.lang.String, java.lang.String, Assignment1.PublicParamters.Course, Assignment1.PublicParamters.Status, java.lang.String)
 	 */
-	public String createSRecord(String firstName, String lastName, Course course, 
-								Status status, String statusdate) throws IOException, RemoteException{
-		this.writeToLog(location.toString() + " creates Student record.");
-		Record studntRecord = new StudentRecord(firstName, lastName, course, status, statusdate);
+	public String createSRecord(String managerId, String firstName, String lastName, String courseRegistered, 
+								String status, String statusdate) throws IOException{
+		this.writeToLog("Manager: "+ managerId + " "+ location.toString() + " creates Student record.");
+		Record studntRecord = new StudentRecord(firstName, lastName, Course.valueOf(courseRegistered), Status.valueOf(status), statusdate);
 		if(recordData.get(lastName.charAt(0)) == null){
 			recordData.put(lastName.charAt(0), new LinkedList<Record>());
 		}
@@ -183,7 +242,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	 * @return message for manager log
 	 * @see Assignment1.DCMSInterface#getRecordCounts()
 	 */
-	public String getRecordCounts() throws IOException, RemoteException, ExecutionException, InterruptedException{
+	public String getRecordCounts(String managerId) throws IOException{
 		this.writeToLog("try to count all record at "+ location.toString());
 		String output = this.location.toString() + " " + recordCount + ", ";
 		if(ServerRunner.serverList.size() ==1 ){
@@ -193,7 +252,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 		else{
 			ExecutorService pool = Executors.newFixedThreadPool(ServerRunner.serverList.size()-1);
 			List<Future<String>> requestArr = new ArrayList<Future<String>>();
-			for(ClinicServer server : ServerRunner.serverList){
+			for(CenterServer server : ServerRunner.serverList){
 				if(server.getLocation() !=this.getLocation()){
 					Future<String> request = pool.submit(new RecordCountRequest(this));
 					requestArr.add(request);
@@ -202,12 +261,16 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 			}
 			
 			for(int i = 0 ; i < requestArr.size(); i++){
-				output += requestArr.get(i).get();
+				try {
+					output += requestArr.get(i).get();
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
 			}
 			pool.shutdown();
 		}
 		// send request one by one, no threading
-//		for(ClinicServer server : ServerRunner.serverList){
+//		for(CenterServer server : ServerRunner.serverList){
 //			if(server.getLocation() !=this.getLocation()){
 //				output += server.getLocation().toString() + " " + requestRecordCounts(server) + ",";
 //			}
@@ -220,10 +283,10 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 
 	private class RecordCountRequest implements Callable<String>{
 		
-		private ClinicServer server;
+		private CenterServer server;
 		private String output;
 
-		public RecordCountRequest(ClinicServer server){
+		public RecordCountRequest(CenterServer server){
 			this.server = server;
 		}
 		
@@ -268,7 +331,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	 * @param server
 	 * @return message to manager log
 	 */
-	public String requestRecordCounts(ClinicServer server){
+	public String requestRecordCounts(CenterServer server){
 		DatagramSocket aSocket = null;
 		
 		try{
@@ -303,11 +366,8 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	}
 	
 	
-	/*
-	 * (non-Javadoc)
-	 * @see Assignment1.DCMSInterface#EditRecord(java.lang.String, java.lang.String, java.lang.String)
-	 */
-	public String EditRecord(String recordID, String fieldName, String newValue) throws IOException, RemoteException{
+	@Override
+	public String editRecord(String managerId, String recordID, String fieldName, String newValue) throws IOException{
 		this.writeToLog("try to edit record for "+recordID);
 		String output = new String();
 
@@ -339,6 +399,37 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 		
 		return output;
 
+	}
+	
+
+	@Override
+	public String transferRecord(String managerId, String recordID, String remoteClinicServerName) {
+		if(!checkRecordIDExistOrNot(recordID)){
+			return "RecordID is not right. Please input again.\n";
+		}
+		if(!remoteClinicServerName.equalsIgnoreCase("mtl")){
+			if(!checkLocation(remoteClinicServerName)){
+				return "Location is not right. Please input (mtl,lvl or ddo).\n";
+			}
+		}else{
+			return "Location is not right. You can not transfer record to sever itself.";
+		}
+		String result = transferRecordToOtherServer(recordID, remoteClinicServerName);
+		this.writeToLog("Manager: "+ managerId + " transfer recordID: "+ recordID + " to " + remoteClinicServerName + "success");
+		return result;
+		
+		
+		   newValue = newValue.toUpperCase(); // location are all upper case
+		   ((TeacherRecord)record).setLocation(newValue);
+	  		String output = recordID+"'s location is changed to "+((TeacherRecord)record).getLocation().toString();
+			for(CenterServer server : ServerRunner.serverList){
+				if(server.getLocation() == Location.valueOf(newValue)){
+     	  		requestCreateRecord(server, record);
+     	  		listIt.remove();
+     	  		recordCount --;
+				}
+			}
+	  		return output;
 	}
 	
 	/**
@@ -374,7 +465,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 								   newValue = newValue.toUpperCase(); // location are all upper case
 								   ((TeacherRecord)record).setLocation(newValue);
 				        	  		String output = recordID+"'s location is changed to "+((TeacherRecord)record).getLocation().toString();
-				        			for(ClinicServer server : ServerRunner.serverList){
+				        			for(CenterServer server : ServerRunner.serverList){
 				        				if(server.getLocation() == Location.valueOf(newValue)){
 						        	  		requestCreateRecord(server, record);
 						        	  		listIt.remove();
@@ -417,7 +508,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	 * @param server
 	 * @param record
 	 */
-	private void requestCreateRecord(ClinicServer server, Record record) {
+	private void requestCreateRecord(CenterServer server, Record record) {
 
 		DatagramSocket aSocket = null;
 		
@@ -503,6 +594,7 @@ public class ClinicServer extends UnicastRemoteObject implements DCMSInterface{
 	public void setRecordCount(int recordCount) {
 		this.recordCount = recordCount;
 	}
+
 
 	
 	
