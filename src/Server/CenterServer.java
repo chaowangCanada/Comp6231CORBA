@@ -187,7 +187,7 @@ public class CenterServer extends DCMSPOA{
 		
 	/*
 	 * (non-Javadoc)
-	 * @see Assignment1.DCMSInterface#createTRecord(java.lang.String, java.lang.String, java.lang.String, java.lang.String, Assignment1.PublicParamters.Specialization, Assignment1.PublicParamters.Location)
+	 * @see Assignment2.DCMSOperation#createTRecord(java.lang.String, java.lang.String, java.lang.String, java.lang.String, Assignment1.PublicParamters.Specialization, Assignment1.PublicParamters.Location)
 	 */
 	public String createTRecord(String managerId, String firstName, String lastName, String address, 
 							  String phone, String specialization, String location) throws IOException {
@@ -238,7 +238,7 @@ public class CenterServer extends DCMSPOA{
 	
 	/*
 	 * @return message for manager log
-	 * @see Assignment1.DCMSInterface#getRecordCounts()
+	 * @see Assignment2.DCMSOperation#getRecordCounts()
 	 */
 	public String getRecordCounts(String managerId) throws IOException{
 		this.writeToLog("try to count all record at "+ location.toString());

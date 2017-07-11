@@ -41,7 +41,7 @@ public class ManagerClient {
 	protected static int managerIDbase =1000; // static to mark unique manager ID
 	private String managerID;	
 	private File log = null;
-	private DCMS DCMS_IMPL = null;
+	private DCMS dcms_linker = null;
 
 	public ManagerClient(String args[], Location l) throws IOException, NotBoundException{
 		managerID = l.toString() + managerIDbase;
@@ -53,7 +53,7 @@ public class ManagerClient {
 				log.createNewFile();
 		}
 		managerIDbase++;
-		DCMS_IMPL = getServerReferrence(args, managerID);
+		dcms_linker = getServerReferrence(args, managerID);
 	}
 
 	/**
@@ -150,7 +150,7 @@ public class ManagerClient {
 	 */
 	public void createTRecord(String firstName, String lastName, String address, 
 			  					String phone, Specialization special, Location loc) throws RemoteException, IOException, NotBoundException{
-		String result = DCMS_IMPL.createTRecord(this.managerID, firstName, lastName, address, phone, special.toString(), loc.toString());
+		String result = dcms_linker.createTRecord(this.managerID, firstName, lastName, address, phone, special.toString(), loc.toString());
 		System.out.println(result);
 		writeToLog(result);
 		
@@ -169,7 +169,7 @@ public class ManagerClient {
 	 */
 	public void createSRecord(String firstName, String lastName, Course course, 
 								Status status, String statusdate) throws IOException, RemoteException, NotBoundException{
-		String reply = DCMS_IMPL.createSRecord(this.managerID, firstName, lastName, course.toString(), status.toString(), statusdate);
+		String reply = dcms_linker.createSRecord(this.managerID, firstName, lastName, course.toString(), status.toString(), statusdate);
 		System.out.println(reply);
 		writeToLog(reply);
 	}
@@ -181,7 +181,7 @@ public class ManagerClient {
 	 * @throws NotBoundException
 	 */
 	public void getRecordCounts() throws IOException, RemoteException, NotBoundException{
-		String reply = DCMS_IMPL.getRecordCounts(this.managerID);
+		String reply = dcms_linker.getRecordCounts(this.managerID);
 		System.out.println(reply);
 		writeToLog(reply);
 	}
@@ -196,7 +196,7 @@ public class ManagerClient {
 	 * @throws NotBoundException
 	 */
 	public void EditRecord(String recordID, String fieldName, String newValue) throws IOException, RemoteException, NotBoundException{
-		String reply = DCMS_IMPL.editRecord(this.managerID,recordID, fieldName, newValue);
+		String reply = dcms_linker.editRecord(this.managerID,recordID, fieldName, newValue);
 		System.out.println(reply);
 		writeToLog(reply);
 	}
@@ -211,7 +211,7 @@ public class ManagerClient {
 	 * @throws NotBoundException
 	 */
 	public void transferRecord(String recordID, String remoteCenterServerName) throws IOException, RemoteException, NotBoundException{
-		String reply = DCMS_IMPL.transferRecord(this.managerID, recordID, remoteCenterServerName);
+		String reply = dcms_linker.transferRecord(this.managerID, recordID, remoteCenterServerName);
 		System.out.println(reply);
 		writeToLog(reply);
 	}
