@@ -120,6 +120,8 @@ public class CenterServer extends DCMSPOA{
 			System.err.println("ERROR: " + e);
 	        e.printStackTrace(System.out);
 		}
+
+		System.out.println("Center Server " +location.toString()+" Exiting ...");
 	}
 	
 
