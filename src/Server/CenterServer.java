@@ -111,13 +111,15 @@ public class CenterServer extends DCMSPOA{
 			NameComponent path[] = ncRef.to_name(name);
 			ncRef.rebind(path, href);
 
+			System.out.println("Center Server " +location.toString()+" is up ...");
+
 			// wait for invocations from clients
 			orb.run();
+
 		} catch (Exception e) {
 			System.err.println("ERROR: " + e);
 	        e.printStackTrace(System.out);
 		}
-		System.out.println("Center Server " +location.toString()+" up running ...");
 	}
 	
 
@@ -164,7 +166,7 @@ public class CenterServer extends DCMSPOA{
 						else if (requestStr.substring(0, 13).equalsIgnoreCase("TeacherRecord")){
 							server.writeToLog("Receive UDP message for creating : "+ requestStr.substring(0, 13));
 							String[] info = requestStr.split("&");
-							server.createTRecord("0", info[1], info[2], info[3], info[4], info[5], info[6]);
+							server.createTRecord(info[1], info[2], info[3], info[4], info[5], info[6], info[7]);
 							String replyStr = "Successfully create Teatcher Record";
 							DatagramPacket reply = new DatagramPacket(replyStr.getBytes(),replyStr.getBytes().length, request.getAddress(), request.getPort()); 
 							aSocket.send(reply);
@@ -172,7 +174,7 @@ public class CenterServer extends DCMSPOA{
 						else if (requestStr.substring(0, 13).equalsIgnoreCase("StudentRecord")){
 							server.writeToLog("Receive UDP message for creating : "+ requestStr.substring(0, 13));
 							String[] info = requestStr.split("&");
-							server.createSRecord("0", info[1], info[2], info[3], info[4], info[5]);
+							server.createSRecord(info[1], info[2], info[3], info[4].replaceAll("\\[", "").replaceAll("\\]",""), info[5], info[6]);
 							String replyStr = "Successfully create Student Record";
 							DatagramPacket reply = new DatagramPacket(replyStr.getBytes(),replyStr.getBytes().length, request.getAddress(), request.getPort()); 
 							aSocket.send(reply);
@@ -191,7 +193,7 @@ public class CenterServer extends DCMSPOA{
 	 */
 	public String createTRecord(String managerId, String firstName, String lastName, String address, 
 							  String phone, String specialization, String location) throws IOException {
-		if(location == this.getLocation().toString()){
+		if(location.equalsIgnoreCase(this.getLocation().toString()) ){
 			this.writeToLog("Manager: "+ managerId + " "+location + " creates Teacher record.");
 			Record tchrRecord = new TeacherRecord(firstName, lastName, address, phone, Specialization.valueOf(specialization), Location.valueOf(location));
 			if(recordData.get(lastName.charAt(0)) == null){
@@ -199,14 +201,14 @@ public class CenterServer extends DCMSPOA{
 			}
 			synchronized(recordData.get(lastName.charAt(0))){ // linked list is not thread safe, need to lock avoid race condition
 				if(recordData.get(lastName.charAt(0)).add(tchrRecord)){
-					String output = "Sucessfully write Teacher record. Record ID: "+tchrRecord.getRecordID();
+					String output = "Manager: "+ managerId + " sucessfully write Teacher record. Record ID: "+tchrRecord.getRecordID();
 					this.writeToLog(output);
 					recordCount++;
 					return output;
 				}
 			}
 		}
-			this.writeToLog("failed to write Teacher Record");
+		this.writeToLog("failed to write Teacher Record");
 		System.out.println("failed to write Teacher Record");
 		return "failed to write Teacher Record";
 	}
@@ -224,7 +226,7 @@ public class CenterServer extends DCMSPOA{
 		}
 		synchronized(recordData.get(lastName.charAt(0))){ // linked list is not thread safe, need to lock avoid race condition
 			if(recordData.get(lastName.charAt(0)).add(studntRecord)){
-				String output = "Sucessfully write Student record. Record ID: "+studntRecord.getRecordID();
+				String output = "Manager: "+ managerId + " Sucessfully write Student record. Record ID: "+studntRecord.getRecordID();
 				this.writeToLog(output);
 				recordCount++;
 				return output;
@@ -247,32 +249,32 @@ public class CenterServer extends DCMSPOA{
 			return output;
 		}
 		// send request using multi threading
-		else{
-			ExecutorService pool = Executors.newFixedThreadPool(ServerRunner.serverList.size()-1);
-			List<Future<String>> requestArr = new ArrayList<Future<String>>();
-			for(CenterServer server : ServerRunner.serverList){
-				if(server.getLocation() !=this.getLocation()){
-					Future<String> request = pool.submit(new RecordCountRequest(this));
-					requestArr.add(request);
-				}
-			
-			}
-			
-			for(int i = 0 ; i < requestArr.size(); i++){
-				try {
-					output += requestArr.get(i).get();
-				} catch (InterruptedException | ExecutionException e) {
-					e.printStackTrace();
-				}
-			}
-			pool.shutdown();
-		}
-		// send request one by one, no threading
-//		for(CenterServer server : ServerRunner.serverList){
-//			if(server.getLocation() !=this.getLocation()){
-//				output += server.getLocation().toString() + " " + requestRecordCounts(server) + ",";
+//		else{
+//			ExecutorService pool = Executors.newFixedThreadPool(ServerRunner.serverList.size()-1);
+//			List<Future<String>> requestArr = new ArrayList<Future<String>>();
+//			for(CenterServer server : ServerRunner.serverList){
+//				if(server.getLocation() !=this.getLocation()){
+//					Future<String> request = pool.submit(new RecordCountRequest(this));
+//					requestArr.add(request);
+//				}
+//			
 //			}
+//			
+//			for(int i = 0 ; i < requestArr.size(); i++){
+//				try {
+//					output += requestArr.get(i).get();
+//				} catch (InterruptedException | ExecutionException e) {
+//					e.printStackTrace();
+//				}
+//			}
+//			pool.shutdown();
 //		}
+		// send request one by one, no threading
+		for(CenterServer server : ServerRunner.serverList){
+			if(server.getLocation() !=this.getLocation()){
+				output += server.getLocation().toString() + " " + requestRecordCounts(server) + ",";
+			}
+		}
 //		
 		return output;
 	}
@@ -373,7 +375,7 @@ public class CenterServer extends DCMSPOA{
 			if(fieldName.equalsIgnoreCase("address")||
 					fieldName.equalsIgnoreCase("phone")||
 					fieldName.equalsIgnoreCase("location")){
-				output= traverseToEdit(recordID, fieldName, newValue, 't'); // t means teacher record
+				output= traverseToEdit(recordID, fieldName, newValue, 't', managerId); // t means teacher record
 				this.writeToLog(output);
 			} else{
 				output ="wrong fieldName";
@@ -383,7 +385,7 @@ public class CenterServer extends DCMSPOA{
 			if(fieldName.equalsIgnoreCase("course")||
 					fieldName.equalsIgnoreCase("status")||
 					fieldName.equalsIgnoreCase("status Date")){
-				output = traverseToEdit(recordID, fieldName, newValue, 's'); // s means student record
+				output = traverseToEdit(recordID, fieldName, newValue, 's', managerId); // s means student record
 				this.writeToLog(output);
 			}
 			else{
@@ -417,13 +419,15 @@ public class CenterServer extends DCMSPOA{
 							   (remoteClinicServerName.equalsIgnoreCase(Location.MTL.toString()) ||
 							    remoteClinicServerName.equalsIgnoreCase(Location.LVL.toString()) ||
 							    remoteClinicServerName.equalsIgnoreCase(Location.DDO.toString()))){
-						   if(remoteClinicServerName.equalsIgnoreCase(this.location.toString())){
+						   if(! remoteClinicServerName.equalsIgnoreCase(this.location.toString())){
 								String output = "Manager: "+ managerId + " change " + recordID +" locaiton to "+ remoteClinicServerName;
 								for(CenterServer server : ServerRunner.serverList){
 									if(server.getLocation() == Location.valueOf(remoteClinicServerName)){
-							  		requestCreateRecord(server, record);
-							  		listIt.remove();
-							  		recordCount --;
+										if(record instanceof TeacherRecord) 
+											((TeacherRecord)record).setLocation(remoteClinicServerName);
+								  		requestCreateRecord(server, record, managerId);
+								  		listIt.remove();
+								  		recordCount --;
 									}
 								}
 								return output;
@@ -431,9 +435,6 @@ public class CenterServer extends DCMSPOA{
 						   else{
 							   return "cannot transfer record to itself server";
 						   }
-					   }
-					   else{
-						   return "location is not correct";
 					   }
 				   }
 					   
@@ -451,7 +452,7 @@ public class CenterServer extends DCMSPOA{
 	 * @param RecordInit
 	 * @return
 	 */
-	private String traverseToEdit(String recordID, String fieldName, String newValue, char RecordInit) {
+	private String traverseToEdit(String recordID, String fieldName, String newValue, char RecordInit, String managerID) {
 		Iterator it = recordData.entrySet().iterator();
 		while(it.hasNext()){
 			   Entry entry = (Entry) it.next();
@@ -478,7 +479,7 @@ public class CenterServer extends DCMSPOA{
 				        	  		String output = recordID+"'s location is changed to "+((TeacherRecord)record).getLocation().toString();
 				        			for(CenterServer server : ServerRunner.serverList){
 				        				if(server.getLocation() == Location.valueOf(newValue)){
-						        	  		requestCreateRecord(server, record);
+						        	  		requestCreateRecord(server, record, managerID);
 						        	  		listIt.remove();
 						        	  		recordCount --;
 				        				}
@@ -519,7 +520,7 @@ public class CenterServer extends DCMSPOA{
 	 * @param server
 	 * @param record
 	 */
-	private void requestCreateRecord(CenterServer server, Record record) {
+	private void requestCreateRecord(CenterServer server, Record record, String managerID) {
 
 		DatagramSocket aSocket = null;
 		
@@ -527,14 +528,14 @@ public class CenterServer extends DCMSPOA{
 			aSocket = new DatagramSocket();
 			String recordString  = "";
 		    if(record instanceof TeacherRecord) 
-		    	recordString += "TeacherRecord&"+record.getFirstName()+"&"+record.getLastName()+"&"+((TeacherRecord)record).getAddress()+
+		    	recordString += "TeacherRecord&"+managerID+"&"+record.getFirstName()+"&"+record.getLastName()+"&"+((TeacherRecord)record).getAddress()+
 		    					"&"+((TeacherRecord)record).getPhone()+"&"+((TeacherRecord)record).getSpecialization().toString()+
 		    					"&"+((TeacherRecord)record).getLocation().toString();
 		    if (record instanceof StudentRecord)
-		    	recordString += "StudentRecord|"+record.getFirstName()+"&"+record.getLastName()+"&"+((StudentRecord)record).getCourse()+
-								"&"+((StudentRecord)record).getStatus().toString()+"&"+
+		    	recordString += "StudentRecord&"+managerID+"&"+record.getFirstName()+"&"+record.getLastName()+"&"+((StudentRecord)record).getCourse()+
+								"&"+((StudentRecord)record).getStatus().toString()+
 								"&"+((StudentRecord)record).getStatusDate();
-
+		    System.out.println(recordString);
 			byte[] message = recordString.getBytes();
 			InetAddress aHost = InetAddress.getByName("localhost");
 			int serverPort = server.getLocation().getPort();

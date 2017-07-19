@@ -26,9 +26,50 @@ public class ServerRunner {
 			ddo.openUDPListener();
 			
 			// create registry, Corba binding
-			mtl.exportServer(args);
-			lvl.exportServer(args);
-			ddo.exportServer(args);
+			new Thread(new Runnable(){
+
+				@Override
+				public void run() {
+					try {
+						mtl.exportServer(args);
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+				}
+				
+			}).start();
+
+			new Thread(new Runnable(){
+
+				@Override
+				public void run() {
+					try {
+						lvl.exportServer(args);
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+				}
+				
+			}).start();
+			
+			new Thread(new Runnable(){
+
+				@Override
+				public void run() {
+					try {
+						ddo.exportServer(args);
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+					
+				}
+				
+			}).start();
 
 			System.out.println("Servers are up and running ");
 

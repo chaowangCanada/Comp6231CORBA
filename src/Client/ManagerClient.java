@@ -79,7 +79,7 @@ public class ManagerClient {
 	 * @return
 	 * @throws Exception
 	 */
-	public static DCMS getServerReferrence(String[] args, String managerID){
+	private DCMS getServerReferrence(String[] args, String managerID){
 		try {
 			//initial the port number of 1050;
 			Properties props = new Properties();
@@ -96,11 +96,11 @@ public class ManagerClient {
 			NamingContextExt ncRef = NamingContextExtHelper.narrow(objRef);
 			
 			if(managerID.substring(0, 3).equalsIgnoreCase("mtl")){
-				return DCMSHelper.narrow(ncRef.resolve_str("server_mtl"));
+				return DCMSHelper.narrow(ncRef.resolve_str(Location.MTL.toString()));
 			}else if(managerID.substring(0, 3).equalsIgnoreCase("lvl")){
-				return DCMSHelper.narrow(ncRef.resolve_str("server_lvl"));
+				return DCMSHelper.narrow(ncRef.resolve_str(Location.LVL.toString()));
 			}else if(managerID.substring(0, 3).equalsIgnoreCase("ddo")){
-				return DCMSHelper.narrow(ncRef.resolve_str("server_ddo"));
+				return DCMSHelper.narrow(ncRef.resolve_str(Location.DDO.toString()));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -215,5 +215,15 @@ public class ManagerClient {
 		System.out.println(reply);
 		writeToLog(reply);
 	}
+
+	public File getLog() {
+		return log;
+	}
+
+	public void setLog(File log) {
+		this.log = log;
+	}
+	
+	
 	
 }

@@ -2,6 +2,10 @@ package Client;
 
 import java.io.IOException;
 import java.rmi.NotBoundException;
+import java.text.ParseException;
+import java.util.HashMap;
+import java.util.Scanner;
+
 import Config.PublicParamters.*;
 import DCMS_CORBA.DCMS;
 
@@ -19,46 +23,48 @@ public class ClientRunner {
 
 	public static void main(String args[]) throws IOException, NotBoundException{
 		
-			
-		ManagerClient mtlManager1 = new ManagerClient(args, Location.MTL);
-		ManagerClient mtlManager2 = new ManagerClient(args, Location.MTL);
-		ManagerClient lvlManager1 = new ManagerClient(args, Location.LVL);
-		ManagerClient lvlManager2 = new ManagerClient(args,Location.LVL);
-		ManagerClient ddoManager1 = new ManagerClient(args,Location.DDO);
-		ManagerClient ddoManager2 = new ManagerClient(args,Location.DDO);
+//			
+//		ManagerClient mtlManager1 = new ManagerClient(args, Location.MTL);
+////		ManagerClient mtlManager2 = new ManagerClient(args, Location.MTL);
+////		ManagerClient lvlManager1 = new ManagerClient(args, Location.LVL);
+////		ManagerClient lvlManager2 = new ManagerClient(args,Location.LVL);
+////		ManagerClient ddoManager1 = new ManagerClient(args,Location.DDO);
+////		ManagerClient ddoManager2 = new ManagerClient(args,Location.DDO);
+////
+//		mtlManager1.createSRecord("Student1", "Student1", Course.FRENCH, Status.ACTIVE, "2017-May-1");
+//		mtlManager1.createTRecord("Teacher1", "Teacher1", "ABC", "123", Specialization.FRENCH , Location.MTL);
+////		mtlManager2.createSRecord("Student2", "Student2", Course.FRENCH, Status.ACTIVE, "2017-May-1");
+////		mtlManager2.createTRecord("Teacher2", "Teacher2", "ABC", "123", Specialization.FRENCH , Location.MTL);
+////		
+////		lvlManager1.createSRecord("Student1", "Student", Course.FRENCH, Status.ACTIVE, "2017-May-1");
+////		lvlManager1.createTRecord("Teacher1", "Teacher1", "ABC", "123", Specialization.FRENCH , Location.LVL);
+////		lvlManager2.createSRecord("Student2", "Student2", Course.FRENCH, Status.ACTIVE, "2017-May-1");
+////		lvlManager2.createTRecord("Teacher2", "Teacher2", "ABC", "123", Specialization.FRENCH , Location.LVL);
+////		
+////		ddoManager1.createSRecord("Student", "Student", Course.FRENCH, Status.ACTIVE, "2017-May-1");
+////		ddoManager1.createTRecord("Teacher", "Teacher", "ABC", "123", Specialization.FRENCH , Location.DDO);
+////		ddoManager2.createSRecord("Student", "Student", Course.FRENCH, Status.ACTIVE, "2017-May-1");
+////		ddoManager2.createTRecord("Teacher", "Teacher", "ABC", "123", Specialization.FRENCH , Location.DDO);
+////		
+////		
+//		mtlManager1.getRecordCounts();
+////		mtlManager2.getRecordCounts();
+//		mtlManager1.EditRecord("SR10000", "status date", "2010-01-01");
+//		mtlManager1.EditRecord("TR10001", "address", "ABC 2010");
+//		mtlManager1.transferRecord("SR10000", "LVL");
+////		mtlManager2.EditRecord("TR10001", "address", "SCIENCE");
+////		
+////		lvlManager1.getRecordCounts();
+////		lvlManager2.getRecordCounts();
+////		lvlManager1.EditRecord("SR10004", "status date", "2010-01-01");
+////		lvlManager2.EditRecord("TR10005", "address", "SCIENCE");
+////		
+////		ddoManager1.getRecordCounts();
+////		ddoManager2.getRecordCounts();
+////		ddoManager1.EditRecord("SR10008", "status date", "2010-01-01");
+////		ddoManager2.createSRecord("Student3", "Student3", Course.FRENCH, Status.ACTIVE, "2017-May-1");
 
-		mtlManager1.createSRecord("Student1", "Student1", Course.FRENCH, Status.ACTIVE, "2017-May-1");
-		mtlManager1.createTRecord("Teacher1", "Teacher1", "ABC", "123", Specialization.FRENCH , Location.MTL);
-		mtlManager2.createSRecord("Student2", "Student2", Course.FRENCH, Status.ACTIVE, "2017-May-1");
-		mtlManager2.createTRecord("Teacher2", "Teacher2", "ABC", "123", Specialization.FRENCH , Location.MTL);
-		
-		lvlManager1.createSRecord("Student1", "Student", Course.FRENCH, Status.ACTIVE, "2017-May-1");
-		lvlManager1.createTRecord("Teacher1", "Teacher1", "ABC", "123", Specialization.FRENCH , Location.LVL);
-		lvlManager2.createSRecord("Student2", "Student2", Course.FRENCH, Status.ACTIVE, "2017-May-1");
-		lvlManager2.createTRecord("Teacher2", "Teacher2", "ABC", "123", Specialization.FRENCH , Location.LVL);
-		
-		ddoManager1.createSRecord("Student", "Student", Course.FRENCH, Status.ACTIVE, "2017-May-1");
-		ddoManager1.createTRecord("Teacher", "Teacher", "ABC", "123", Specialization.FRENCH , Location.DDO);
-		ddoManager2.createSRecord("Student", "Student", Course.FRENCH, Status.ACTIVE, "2017-May-1");
-		ddoManager2.createTRecord("Teacher", "Teacher", "ABC", "123", Specialization.FRENCH , Location.DDO);
-		
-		
-		mtlManager1.getRecordCounts();
-		mtlManager2.getRecordCounts();
-		mtlManager1.EditRecord("SR10000", "status date", "2010-01-01");
-		mtlManager2.EditRecord("TR10001", "address", "SCIENCE");
-		
-		lvlManager1.getRecordCounts();
-		lvlManager2.getRecordCounts();
-		lvlManager1.EditRecord("SR10004", "status date", "2010-01-01");
-		lvlManager2.EditRecord("TR10005", "address", "SCIENCE");
-		
-		ddoManager1.getRecordCounts();
-		ddoManager2.getRecordCounts();
-		ddoManager1.EditRecord("SR10008", "status date", "2010-01-01");
-		ddoManager2.createSRecord("Student3", "Student3", Course.FRENCH, Status.ACTIVE, "2017-May-1");
-
-		/* TUI menu
+		 //TUI menu
 	try{
 		int userChoice=0;
 		String userInput="";
@@ -97,7 +103,7 @@ public class ClientRunner {
 				if (userInput.equals("MTL")||userInput.equals("LVL")||userInput.equals("DDO"))
 				{
 					Location loc = Location.valueOf(userInput.toUpperCase());
-					ManagerClient client = new ManagerClient(loc);
+					ManagerClient client = new ManagerClient(args,loc);
 					managerList.put(client.getManagerID(), client);
 					client.writeToLog("Create new account. Your manager id is "+ client.getManagerID());
 					System.out.println("Your account is created. Your manager id is "+ client.getManagerID());
@@ -156,7 +162,8 @@ public class ClientRunner {
 			System.out.println("2. Create Student Record");
 			System.out.println("3. Get record counts");
 			System.out.println("4. Edit record");
-			System.out.println("5. Exit");
+			System.out.println("5. Transfer Record");
+			System.out.println("6. Exit");
 			userChoice=keyboard.nextInt();
 		// Manage user selection.
 			switch(userChoice)
@@ -173,7 +180,7 @@ public class ClientRunner {
 					Specialization special = Specialization.valueOf(keyboard.nextLine().toUpperCase());
 					Location location = Location.valueOf(keyboard.nextLine().substring(0, 3).toUpperCase());
 					
-					client.writeToLog("Manager create new Teacher Record"+ firstName +" "+ lastName +" " + address +" "+ 
+					client.writeToLog("Manager " + client.getManagerID()+ " create new Teacher Record"+ firstName +" "+ lastName +" " + address +" "+ 
 											phone +" " +special.toString() +" " +location.toString());
 					client.createTRecord(firstName, lastName, address, phone, special, location);
 					break;
@@ -188,7 +195,7 @@ public class ClientRunner {
 					Status status = Status.valueOf(keyboard.nextLine().toUpperCase());
 					String statusDate = keyboard.nextLine();
 
-					client.writeToLog("Manager create new Student Record"+ fn +" "+ ln +" " + course.toString() +" "+ 
+					client.writeToLog("Manager " + client.getManagerID()+ " create new Student Record"+ fn +" "+ ln +" " + course.toString() +" "+ 
 							status.toString() +" " +statusDate.toString() );
 					client.createSRecord(fn, ln, course, status, statusDate);
 					break;
@@ -201,21 +208,29 @@ public class ClientRunner {
 					String recordID = keyboard.nextLine();
 					String field = keyboard.nextLine();
 					String newValue = keyboard.nextLine();
-					client.writeToLog("Manager edit record " +" record ID "+ recordID +" filed "
+					client.writeToLog("Manager " + client.getManagerID()+ " edit record " +" record ID "+ recordID +" filed "
 											+field +" new value "+ newValue);
 					client.EditRecord(recordID, field, newValue);
 					break;
 				case 5:
+					System.out.println("Please enter the record id, remote server name. Separate by \"ENTER\" key");
+					keyboard.nextLine();
+					recordID = keyboard.nextLine();
+					String serverName = keyboard.nextLine();
+					client.writeToLog("Manager " + client.getManagerID()+ " transfer record " +" record ID "+ recordID +" to "
+											+ serverName);
+					client.transferRecord(recordID, serverName);
+					break;
+				case 6:
 					System.out.println("Have a nice day!");
 					keyboard.close();
 					client.writeToLog("Manager exit");
-					client.log.exists();
 					System.exit(0);
 				default:
 					System.out.println("Invalid Input, please try again.");
 					
 			}
-		}	*/
+		}	
 	}
 
 }
